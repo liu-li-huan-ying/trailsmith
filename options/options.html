@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <h1>TrailSmith 设置</h1>
+
+  <section>
+    <h2>复制净化 Copy Smith</h2>
+    <label><input type="checkbox" id="enabled" /> 启用复制净化</label>
+    <label><input type="checkbox" id="preserveCodeBlocks" /> 代码块保留缩进</label>
+    <label><input type="checkbox" id="normalizeQuotes" /> 中文引号统一</label>
+    <label><input type="checkbox" id="fixSoftLineBreaks" /> 软换行修复</label>
+    <label><input type="checkbox" id="skipInputFields" /> 输入框内复制跳过</label>
+  </section>
+
+  <section>
+    <h2>记录保留</h2>
+    <label>保留时长：
+      <select id="retentionDays">
+        <option value="1">1 天</option>
+        <option value="7">7 天</option>
+        <option value="30">30 天</option>
+        <option value="0">永久</option>
+      </select>
+    </label>
+    <label><input type="checkbox" id="trackIncognito" /> 记录隐身窗口</label>
+  </section>
+
+  <section>
+    <h2>黑名单域名（每行一个）</h2>
+    <textarea id="blacklist" rows="4"></textarea>
+  </section>
+
+  <section>
+    <h2>净化规则</h2>
+    <div id="rules"></div>
+  </section>
+
+  <button id="save">保存</button>
+  <span id="status"></span>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

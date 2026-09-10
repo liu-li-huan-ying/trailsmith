@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header>
+    <span class="logo">🧭 TrailSmith</span>
+    <a class="settings" href="#" id="openOptions">⚙️</a>
+  </header>
+  <section class="overview" id="overview"></section>
+  <section class="filters">
+    <input id="search" placeholder="搜索域名/标题/关键词" />
+    <select id="range">
+      <option value="1">今天</option>
+      <option value="7" selected>最近7天</option>
+      <option value="0">全部</option>
+    </select>
+  </section>
+  <section class="tree" id="tree"></section>
+  <footer>
+    <button id="export">导出 JSON</button>
+    <button id="clear">清空记录</button>
+  </footer>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
