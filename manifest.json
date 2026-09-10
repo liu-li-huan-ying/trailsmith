@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TrailSmith",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Tab Trail + Copy Smith — 浏览血缘记录 + 复制净化",
   "permissions": [
     "tabs",

@@ -1,0 +1,353 @@
+/* ============================================================
+   TrailSmith — 设计令牌与基础组件
+   原则：近单色 + 发丝线 + 排版驱动；禁用渐变与大面积高饱和色。
+   唯一强调色 --accent 只用于：焦点环、开关开启、主操作按钮。
+   ============================================================ */
+
+:root {
+  color-scheme: light dark;
+
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  /* ---- 浅色 ---- */
+  --bg: #fcfcfd;
+  --surface: #ffffff;
+  --surface-2: #f5f6f8;
+  --surface-3: #eceef1;
+  --line: rgba(16, 18, 24, 0.1);
+  --line-strong: rgba(16, 18, 24, 0.18);
+  --text: #16181d;
+  --text-2: #6a707c;
+  --text-3: #9aa1ac;
+  --accent: #5e6ad2;
+  --accent-hover: #6b76dc;
+  --accent-ink: #ffffff;
+  --accent-dim: rgba(94, 106, 210, 0.14);
+  --live: #17a56b;
+  --danger: #cf423c;
+  --danger-dim: rgba(207, 66, 60, 0.1);
+  --mark-bg: #fdf0b8;
+  --mark-ink: #59460a;
+
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 10px;
+
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0b0d;
+    --surface: #131316;
+    --surface-2: #191a1e;
+    --surface-3: #232429;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-strong: rgba(255, 255, 255, 0.16);
+    --text: #f0f0f2;
+    --text-2: #9a9aa3;
+    --text-3: #63636b;
+    --accent: #6e79d6;
+    --accent-hover: #7d87de;
+    --accent-ink: #ffffff;
+    --accent-dim: rgba(110, 121, 214, 0.18);
+    --live: #35c48d;
+    --danger: #ef5a5f;
+    --danger-dim: rgba(239, 90, 95, 0.13);
+    --mark-bg: #4a3f12;
+    --mark-ink: #ffe694;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---------- 滚动条：几乎不可见 ---------- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-3);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------- 图标按钮 ---------- */
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  color: var(--text-3);
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: color 0.14s var(--ease), background 0.14s var(--ease);
+}
+.icon-btn:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.icon-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+/* ---------- 按钮 ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 13px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.14s var(--ease), border-color 0.14s var(--ease),
+    color 0.14s var(--ease);
+}
+.btn:hover {
+  background: var(--surface-2);
+  border-color: var(--line-strong);
+}
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+.btn-primary {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: transparent;
+}
+.btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: transparent;
+}
+.btn-danger {
+  color: var(--text-2);
+}
+.btn-danger:hover {
+  color: var(--danger);
+  background: var(--danger-dim);
+  border-color: transparent;
+}
+
+/* ---------- 输入 ---------- */
+.input,
+.textarea {
+  width: 100%;
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  transition: background 0.14s var(--ease), border-color 0.14s var(--ease),
+    box-shadow 0.14s var(--ease);
+}
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--text-3);
+}
+.input:hover,
+.textarea:hover {
+  background: var(--surface-3);
+}
+.input:focus,
+.textarea:focus {
+  outline: none;
+  background: var(--surface);
+  border-color: var(--line-strong);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+.textarea {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.65;
+  resize: vertical;
+}
+
+/* 无边框下拉：只留文字与箭头 */
+.plain-select {
+  appearance: none;
+  padding: 6px 20px 6px 7px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-2);
+  background-color: transparent;
+  background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.75 6 7.75 9 4.75' fill='none' stroke='%239aa1ac' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+  border: 0;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: color 0.14s var(--ease), background-color 0.14s var(--ease);
+}
+.plain-select:hover {
+  color: var(--text);
+  background-color: var(--surface-2);
+}
+.plain-select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+/* ---------- 开关 ---------- */
+.switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  cursor: pointer;
+}
+.switch input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+}
+.switch .track {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: background 0.18s var(--ease), box-shadow 0.18s var(--ease);
+}
+.switch .track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.18s var(--ease);
+}
+.switch input:checked + .track {
+  background: var(--accent);
+  box-shadow: none;
+}
+.switch input:checked + .track::after {
+  transform: translateX(14px);
+}
+.switch input:focus-visible + .track {
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+.switch input:disabled + .track {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ---------- 分段选择 ---------- */
+.seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface-2);
+  border-radius: var(--r-md);
+}
+.seg label {
+  position: relative;
+}
+.seg input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+}
+.seg span {
+  display: block;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--text-2);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.14s var(--ease), background 0.14s var(--ease);
+}
+.seg label:hover span {
+  color: var(--text);
+}
+.seg input:checked + span {
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 0 1px var(--line);
+}
+.seg input:focus-visible + span {
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+/* ---------- 杂项 ---------- */
+kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.mark {
+  padding: 0 1px;
+  border-radius: 2px;
+  background: var(--mark-bg);
+  color: var(--mark-ink);
+  font-weight: 600;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

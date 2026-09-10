@@ -129,19 +129,21 @@ Google（搜索"注意力训练"）
 
 | 规则 ID | 名称 | 默认状态 | 实现方式 |
 |---------|------|----------|----------|
-| `R001` | 移除常见模板噪声 | ✅ 开 | 正则匹配 + DOM 文本分析 |
-| `R002` | 中文引号统一 | ✅ 开 | `"..."` → `"..."` |
-| `R003` | 软换行修复（通用） | ✅ 开 | 检测行尾非句末、下行首小写/中文的断行并合并为空格（**原为"PDF 换行修复"，改为通用规则，覆盖网页复制中的软换行**） |
-| `R004` | 代码块缩进保留 | ✅ 开 | 检测 `<pre>` / `<code>` 上下文 |
-| `R005` | 多余空行压缩 | ✅ 开 | 3+ 连续换行 → 2 个换行 |
-| `R006` | Markdown 化（实验性） | ❌ 关 | 标题/列表自动转 Markdown |
-| `R007` | 表格结构保留 | ❌ 关 | 复制表格时保留 TS 格式 |
+| `R001` | 清理模板噪声 | ✅ 开 | 正则匹配移除「关注我们 / 扫码关注 / 展开剩余」等页面模板文案 |
+| `R002` | 中文引号统一 | ✅ 开 | 英文直引号 → 中文弯引号 |
+| `R003` | 软换行修复 | ✅ 开 | 行尾非句末标点且下行首为小写/中文时，把换行合并为空格（原「PDF 换行修复」，已改为通用规则） |
+| `R004` | 代码块保护 | ✅ 开 | 命中 `<pre>` / `<code>` 上下文时只压缩空行，不动缩进与内容 |
+| `R005` | 空行压缩 | ✅ 开 | 3+ 连续换行 → 1 个空行 |
+
+> **规则列表是唯一事实源**：Copy Smith 的全部文本变换都只由 `rules[].enabled` 决定。不再存在与规则重复的顶层布尔开关（早期的 `normalizeQuotes` / `fixSoftLineBreaks` / `preserveCodeBlocks` 已删除）。未实现的占位规则（原 R006 Markdown 化、R007 表格保留）一并移除，避免设置页出现「开关存在但不生效」的假功能。
 
 #### 2.2.3 噪声模式库（R001）
 
+> **落点**：content script 以经典脚本注入，无法静态 `import` ESM，因此噪声正则自持在 `content/copy-cleaner.js` 内（不在 `lib/` 里重复导出一份）。`lib/constants.js` 只保留配置契约与规则表。
+
 ```javascript
-// 默认内置模式，用户可增删
-const DEFAULT_NOISE_PATTERNS = [
+// content/copy-cleaner.js 内置，命中即移除
+const NOISE = [
   /关注我们.*?\n/g,
   /展开剩余\d+条?/g,
   /版权所有.*?\n/g,
@@ -192,37 +194,34 @@ const DEFAULT_NOISE_PATTERNS = [
 ### 3.1 项目结构
 
 ```
-trailsmith/
+trailsmith/                          # 与仓库实际文件一一对应，不含空壳
 ├── manifest.json                    # MV3 配置
 ├── background/
-│   ├── service-worker.js            # 后台入口
-│   ├── tab-tracker.js               # Tab Trail 采集逻辑（含 lastActive 持久化）
-│   ├── storage-manager.js           # chrome.storage 封装（含容量监控/清理）
-│   └── rule-engine.js               # Copy Smith 规则引擎（后台部分，可选）
+│   ├── service-worker.js            # 后台入口（onInstalled 播种默认配置）
+│   ├── tab-tracker.js               # Tab Trail 采集（lastActive / currentActiveTabId 持久化）
+│   └── storage-manager.js           # chrome.storage 封装（trails / state / config / 保留期清理）
 ├── content/
-│   ├── copy-cleaner.js              # Copy Smith 核心（注入页面）
-│   └── content.css                  # 页面内样式（如有）
+│   └── copy-cleaner.js              # Copy Smith 核心（注入页面，自持噪声正则）
 ├── popup/
-│   ├── popup.html                   # Popup 页面
-│   ├── popup.js                     # Popup 逻辑
-│   ├── trail-tree.js                # 树状图渲染
+│   ├── popup.html                   # Popup 结构
+│   ├── popup.js                     # 指标条 + 血缘树渲染、搜索高亮、导出/清空
 │   └── popup.css
-├── side-panel/                      # v0.2 预留，v0.1 不实现
-│   ├── panel.html
-│   └── panel.js
 ├── options/
-│   ├── options.html                 # 设置页
-│   ├── options.js                   # 规则编辑、黑名单管理
+│   ├── options.html                 # 设置页结构
+│   ├── options.js                   # 规则开关、保留期、黑名单
 │   └── options.css
 ├── lib/
+│   ├── theme.css                    # 设计令牌 + 基础组件（Popup / Options 共用）
+│   ├── constants.js                 # 存储键、规则表、保留期选项、支付域名、默认配置
 │   ├── tree-builder.js              # 血缘树构建算法
-│   ├── search-engine-parser.js      # 搜索引擎 URL 解析
+│   ├── search-engine-parser.js      # 搜索引擎 URL 解析 + 展示名
 │   ├── privacy-filter.js            # 隐私过滤规则
-│   ├── time-utils.js                # 时间格式化
-│   └── constants.js                 # 全局常量
-├── icons/
+│   └── time-utils.js                # 时间格式化
+├── PLAN.md
 └── README.md
 ```
+
+> `side-panel/` 为 v0.2 规划项，v0.1 不建目录、不留占位文件。
 
 ### 3.2 Manifest V3 配置（关键字段，已修正权限）
 
@@ -295,23 +294,22 @@ interface TrailRecord {
 interface CleanRule {
   id: string;
   name: string;
-  enabled: boolean;
-  pattern?: string;        // 正则字符串（用户自定义时用 new RegExp 重建，需校验合法性）
-  flags?: string;
   description: string;
-  builtin: boolean;        // true = 内置，不可删除
+  enabled: boolean;        // 唯一生效开关
 }
 
 interface CopySmithConfig {
-  enabled: boolean;
-  rules: CleanRule[];
-  preserveCodeBlocks: boolean;
-  normalizeQuotes: boolean;
-  fixSoftLineBreaks: boolean;   // 原 fixPdfLineBreaks
-  skipInputFields: boolean;
-  hotkeyBypass: string;    // 默认 "Ctrl+Shift+C"
+  enabled: boolean;        // 总开关
+  rules: CleanRule[];      // R001–R005，唯一事实源
+  skipInputFields: boolean; // 行为开关（非文本变换，故不放进规则表）
+  hotkeyBypass: string;    // 固定 "Ctrl+Shift+C"
+  retentionDays: number;   // 1 / 7 / 30 / 0(永久)
+  trackIncognito: boolean;
+  blacklist: string[];     // 域名，Trail 与 Copy Smith 共用
 }
 ```
+
+> 规则与内置表按 `id` 合并（`mergeRules`）：后续新增内置规则时，老用户的配置会自动补上该规则，不会丢。
 
 #### 3.3.3 存储方案
 
@@ -411,41 +409,55 @@ copy 事件触发
 
 ## 五、Popup / Side Panel UI 设计
 
-### 5.1 Popup 布局（默认 360×600）
+### 5.1 Popup 布局（默认 380px 宽 × ≤560px 高）
 
 ```
-┌─────────────────────────────────────┐
-│  🧭 TrailSmith              [⚙️设置] │
-├─────────────────────────────────────┤
-│  📊 今日概览                         │
-│  活跃标签: 23 条   浏览链: 5 条       │
-│  复制净化: 12 次                      │
-├─────────────────────────────────────┤
-│  🌳 最近浏览血缘                     │
-│                                     │
-│  🔍 Google: "注意力训练"             │
-│   ├── 知乎：《如何系统训练注意力》     │
-│   │   ├── arXiv: Attention...        │
-│   │   └── B站：10分钟训练指南         │
-│   └── 豆瓣：《深度工作》书评          │
-│                                     │
-│  🔍 Baidu: "react 性能优化"          │
-│   ├── GitHub: react-window           │
-│   └── 掘金：前端性能优化实践          │
-│                                     │
-├─────────────────────────────────────┤
-│  [查看完整树 →]  [导出 JSON]         │
-└─────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│ ◈ TrailSmith                        ⚙︎  │  42px 顶栏（发丝线收底）
+├──────┬──────┬──────┬─────────────────────┤
+│   6  │   2  │   2  │      16m17s         │  指标条：记录/浏览链/活跃/停留
+│ 记录 │浏览链│ 活跃 │      停留           │  竖向发丝线分隔，无卡片无底色
+├──────┴──────┴──────┴─────────────────────┤
+│ ⌕ 搜索标题、域名或关键词      近 7 天 ▾  │
+├──────────────────────────────────────────┤
+│ ⌕  rust async runtime                    │  搜索起点：放大镜描边徽标
+│    Google · 1m36s                        │
+│ ┌ Z  Rust 异步编程实践：从 Future 到…     │  子树：左侧 1px 发丝竖线
+│ │    zhuanlan.zhihu.com · 2m34s          │
+│ ├ T  Tokio — 异步运行时                  │
+│ │    tokio.rs · 7m1s                     │
+│ │ ┌ G  tokio-rs/tokio: A runtime for…    │
+│ │ │    github.com · 3m28s                 │
+│ ● D  Async Book — Rust 异步编程中文版     │  ● = 仍开着的标签
+│      doc.rust-lang.org · 1m1s             │
+├──────────────────────────────────────────┤
+│ [ 导出 JSON ]        [ 清空记录 ]        │
+└──────────────────────────────────────────┘
 ```
 
 ### 5.2 交互设计
 
 | 交互 | 行为 |
 |------|------|
-| 点击树节点 | 在新 Tab 中重新打开该 URL |
-| 右键节点 | 显示菜单：复制 URL / 删除记录 / 标记为重要 |
-| 搜索框 | 按关键词/域名/时间过滤 |
-| 时间范围切换 | 今天 / 昨天 / 最近 7 天 / 全部 |
+| 点击节点 / 聚焦后回车 | 在新 Tab 中重新打开该 URL |
+| 节点悬浮 | 整行浅底高亮；标题过长时以 `title` 属性给出全文 |
+| 搜索框 | 实时过滤标题 / 域名 / 搜索词，命中片段就地高亮（`<mark>`） |
+| 时间范围 | 今天 / 近 7 天 / 全部 |
+| 活跃标识 | 绿色小圆点，仅表示「标签页仍开着」 |
+| 导出 / 清空 | 导出全部记录为 JSON；清空前二次确认 |
+
+### 5.3 视觉设计语言
+
+一套克制、耐看的界面语言，`lib/theme.css` 承载全部设计令牌，Popup 与 Options 共用。
+
+- **近单色**：整体只有中性灰阶 + 一处强调色。列表里的域名徽标为中性灰块，不再按域名哈希上色（彩虹色块是廉价感的主要来源）。
+- **零渐变**：顶栏、按钮、开关一律纯色填充。不出现 `linear-gradient`。
+- **发丝线代替投影**：`--line`（浅色 10% 黑 / 深色 8% 白）做 1px 分隔，几乎不用 box-shadow，不出现悬浮卡片。
+- **排版驱动层级**：靠字号、字重、字距与留白建立层级，而非色块。指标用 `font-variant-numeric: tabular-nums` 对齐。
+- **强调色克制**：`--accent` 只出现在三处 —— 焦点环、开关开启态、主操作按钮。其余全部中性。
+- **小圆角**：6 / 8 / 10px 三档，配合紧凑密度（行高 ≈ 30px）。
+- **双主题**：以 `prefers-color-scheme` 自动切换，深色优先调校；`color-scheme` 声明让原生控件跟随。
+- **图标自绘**：全部用内联描边 SVG（罗盘品牌标、滑块设置、放大镜、下拉箭头），不用 emoji 做界面图标 —— emoji 在不同字体下字形与基线不可控。
 
 ---
 
@@ -524,6 +536,10 @@ v0.1 只需在 Manifest 中预留 `sidePanel` 可选权限，无需实现完整�
 - [ ] 隐私过滤生效（登录页、支付页不记录）
 - [ ] SW 多次休眠/唤醒后功能正常、无内存泄漏；停留时长累计准确（含首屏播种与 `currentActiveTabId` 持久化）
 - [ ] 存储占用 < 3MB（7 天数据）；清理逻辑不误删仍在打开的标签
+- [ ] 规则开关与实际净化行为一致：关闭任一条目后该变换确实不再发生
+- [ ] Popup / Options 在浅色与深色系统主题下均可用（发丝线可见、无对比度失效）
+- [ ] 空数据状态有明确空态提示，不出现空白面板
+- [ ] 搜索命中片段就地高亮，长标题可通过悬浮看全文
 
 ### 9.2 不应做的事（Non-Goals）
 
@@ -606,3 +622,30 @@ v0.1 只需在 Manifest 中预留 `sidePanel` 可选权限，无需实现完整�
 - [x] **storage.local 上限更正为 ~10MB**（初版误写 5MB）
 - [x] **补 4.3 易踩坑点**：onUpdated 守卫、黑名单跨模块共享、tree 防环、首屏播种、keepAlive 非必需
 - [x] **DoD 措辞对齐 MV3**："连续运行"改为"SW 反复休眠/唤醒后正常"
+
+---
+
+## 十四、v0.1.1 修订：配置收敛与界面重做
+
+**A. 配置去重（同一件事只留一处开关）**
+
+| 问题 | 处理 |
+|------|------|
+| 设置页把「中文引号统一 / 软换行修复 / 代码块保护」各渲染两遍 —— 既有顶层布尔开关，又有同名规则 | 顶层布尔删除，`rules[].enabled` 成为唯一事实源；`content/copy-cleaner.js` 改为只读规则 |
+| `R006 Markdown 化` / `R007 表格保留` 从未实现，设置页却列出开关 | 删除两条占位规则（不留「开关存在但不生效」的假功能） |
+| `lib/constants.js` 导出 `DEFAULT_NOISE_PATTERNS`、`RETENTION_DAYS_OPTIONS` 但无人引用 | 删除死导出；噪声正则只留在 content script 内 |
+
+**B. 界面重做（去掉廉价感）**
+
+初版界面用紫色渐变顶栏 + 4 张彩色统计卡 + 按域名哈希上色的彩虹徽标 + 渐变按钮与开关，整体是通用后台模板的观感。重做为近单色、发丝线、排版驱动的语言，令牌集中在 `lib/theme.css`，详见 5.3。
+
+| # | 动作 |
+|---|------|
+| 1 | 顶栏渐变 → 纯色 + 1px 发丝线收底 |
+| 2 | 4 张彩色统计卡 → 一条无底色的指标带，竖向发丝线分隔 |
+| 3 | 域名哈希彩色徽标 → 中性灰字母块；搜索起点用描边放大镜区分 |
+| 4 | 渐变按钮 / 渐变开关 → 纯色；强调色只留焦点环、开关开启、主按钮三处 |
+| 5 | 右侧元信息列挤压标题 → 域名与时长下移一行，标题占满宽度 |
+| 6 | `🔍` emoji 徽标 / `⚙️` emoji 图标 → 内联描边 SVG |
+| 7 | 徽标（活跃 / 切换次数 / 子节点数）→ 仅保留绿色活跃圆点，其余移入悬浮提示 |
+| 8 | Options 的 checkbox 列表 → 开关行 + 分段选择器，分区标签与面板分离 |

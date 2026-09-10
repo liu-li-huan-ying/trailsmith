@@ -2,45 +2,98 @@
 <html lang="zh">
 <head>
   <meta charset="utf-8" />
+  <link rel="stylesheet" href="../lib/theme.css" />
   <link rel="stylesheet" href="options.css" />
 </head>
 <body>
-  <h1>TrailSmith 设置</h1>
+  <header class="topbar">
+    <div class="wrap topbar-in">
+      <div class="brand">
+        <svg class="mark" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+          <circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.3" />
+          <path d="M10.9 5.1 9.1 9.1 5.1 10.9 6.9 6.9Z" fill="currentColor" />
+        </svg>
+        <span class="name">TrailSmith</span>
+      </div>
+      <span class="ver">0.1.1</span>
+    </div>
+  </header>
 
-  <section>
-    <h2>复制净化 Copy Smith</h2>
-    <label><input type="checkbox" id="enabled" /> 启用复制净化</label>
-    <label><input type="checkbox" id="preserveCodeBlocks" /> 代码块保留缩进</label>
-    <label><input type="checkbox" id="normalizeQuotes" /> 中文引号统一</label>
-    <label><input type="checkbox" id="fixSoftLineBreaks" /> 软换行修复</label>
-    <label><input type="checkbox" id="skipInputFields" /> 输入框内复制跳过</label>
-  </section>
+  <main class="wrap">
+    <section class="group">
+      <h2 class="group-label">复制净化</h2>
+      <div class="panel">
+        <div class="prow">
+          <div class="prow-t">
+            <span class="prow-n">启用复制净化</span>
+            <span class="prow-d">复制网页内容时自动清洗剪贴板。按住 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>
+              再复制可临时原样复制。</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="enabled" />
+            <span class="track"></span>
+          </label>
+        </div>
+        <div class="prow" id="skipRow">
+          <div class="prow-t">
+            <span class="prow-n">输入框内跳过</span>
+            <span class="prow-d">在 input / textarea / 可编辑区域内复制时不做任何改动</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="skipInputFields" />
+            <span class="track"></span>
+          </label>
+        </div>
+      </div>
+    </section>
 
-  <section>
-    <h2>记录保留</h2>
-    <label>保留时长：
-      <select id="retentionDays">
-        <option value="1">1 天</option>
-        <option value="7">7 天</option>
-        <option value="30">30 天</option>
-        <option value="0">永久</option>
-      </select>
-    </label>
-    <label><input type="checkbox" id="trackIncognito" /> 记录隐身窗口</label>
-  </section>
+    <section class="group" id="cardRules">
+      <h2 class="group-label">净化规则 <span class="count" id="ruleCount"></span></h2>
+      <div class="panel" id="rules"></div>
+    </section>
 
-  <section>
-    <h2>黑名单域名（每行一个）</h2>
-    <textarea id="blacklist" rows="4"></textarea>
-  </section>
+    <section class="group">
+      <h2 class="group-label">记录保留</h2>
+      <div class="panel">
+        <div class="prow">
+          <div class="prow-t">
+            <span class="prow-n">保留时长</span>
+            <span class="prow-d">超出时长的浏览记录会被自动清理</span>
+          </div>
+          <div class="seg" id="retention" role="radiogroup" aria-label="保留时长"></div>
+        </div>
+        <div class="prow">
+          <div class="prow-t">
+            <span class="prow-n">记录隐身窗口</span>
+            <span class="prow-d">默认关闭，隐身浏览不留痕迹</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="trackIncognito" />
+            <span class="track"></span>
+          </label>
+        </div>
+      </div>
+    </section>
 
-  <section>
-    <h2>净化规则</h2>
-    <div id="rules"></div>
-  </section>
+    <section class="group">
+      <h2 class="group-label">黑名单域名 <span class="count" id="blCount"></span></h2>
+      <div class="panel">
+        <div class="prow col">
+          <span class="prow-d">每行一个域名。命中的网站既不记录浏览血缘，也不净化复制内容。</span>
+          <textarea class="textarea" id="blacklist" rows="5" spellcheck="false"
+            placeholder="mail.google.com&#10;bank.example.com"></textarea>
+        </div>
+      </div>
+    </section>
+  </main>
 
-  <button id="save">保存</button>
-  <span id="status"></span>
+  <footer class="savebar">
+    <div class="wrap savebar-in">
+      <span class="status" id="status"></span>
+      <button class="btn btn-primary" id="save">保存设置</button>
+    </div>
+  </footer>
+
   <script type="module" src="options.js"></script>
 </body>
 </html>
