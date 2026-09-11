@@ -1,4 +1,4 @@
-import { STORAGE_KEYS, defaultConfig } from './constants.js';
+import { STORAGE_KEYS, defaultConfig } from '../lib/constants.js';
 
 async function getLocal(key, fallback) {
   const r = await chrome.storage.local.get(key);
@@ -50,6 +50,30 @@ export async function getConfig() {
 
 export async function setConfig(config) {
   await chrome.storage.sync.set({ [STORAGE_KEYS.CONFIG]: config });
+}
+
+/** MV3 下 chrome.storage.local 上限约 10MB */
+export const STORAGE_QUOTA_BYTES = 10 * 1024 * 1024;
+
+export async function trailBytes() {
+  return await chrome.storage.local.getBytesInUse(STORAGE_KEYS.TRAILS);
+}
+
+/**
+ * 占用超过 90% 时，从最旧的已关闭记录开始删，一次削 20%。
+ * 不碰仍在打开的记录（closedAt === null）。返回删除条数。
+ */
+export async function enforceQuota() {
+  const used = await trailBytes();
+  if (used < STORAGE_QUOTA_BYTES * 0.9) return 0;
+  const map = await getLocal(STORAGE_KEYS.TRAILS, {});
+  const closed = Object.values(map)
+    .filter((r) => r.closedAt)
+    .sort((a, b) => a.closedAt - b.closedAt);
+  const drop = Math.max(1, Math.ceil(closed.length * 0.2));
+  for (const r of closed.slice(0, drop)) delete map[r.id];
+  await setLocal(STORAGE_KEYS.TRAILS, map);
+  return drop;
 }
 
 export async function cleanupRetention(config) {

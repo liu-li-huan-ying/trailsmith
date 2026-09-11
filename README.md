@@ -24,10 +24,12 @@
 
 ## 当前状态
 
-- 版本：`v0.1.1`
+- 版本：`v0.1.2`
 - 已实现：MV3 工程骨架、Tab Trail 采集与血缘树、Copy Smith R001–R005、Popup 与 Options 界面（浅色/深色双主题）。
-- 待补：Side Panel（v0.2）、粘贴守卫（v0.3）、真实浏览器内加载验证。
-- 计划书见 `PLAN.md`（含三轮对抗式可行性自审 + v0.1.1 界面重做记录）。
+- **已通过端到端实测**：用无头 Edge + CDP 把扩展真实装进浏览器跑通全链路（开标签 / 开子标签 / 关标签 / 构造复制），28 项断言全绿；引用完整性 44 条全命中。详见 `PLAN.md` 第十五节。
+- 隐私过滤覆盖：私有 IP / localhost、非网页协议（`chrome-extension:` / `about:` / `file:`）、登录类参数、支付类域名、隐身窗口、自定义黑名单。
+- 待补：Side Panel（v0.2）、粘贴守卫（v0.3）、商店上架材料。
+- 计划书见 `PLAN.md`（含三轮对抗式可行性自审 + v0.1.1 界面重做 + v0.1.2 缺陷修复记录）。
 
 ## 开发加载
 
@@ -39,12 +41,20 @@
 
 ```
 manifest.json
-background/   service-worker / tab-tracker / storage-manager
+icons/        16/32/48/128 图标（SVG 为源，PNG 由无头 Edge 栅格化）
+background/   service-worker / tab-tracker / storage-manager / lock(串行锁)
 content/      copy-cleaner（注入页面）
 lib/          theme(设计令牌) / constants / time-utils / search-engine-parser / privacy-filter / tree-builder
 popup/        Popup 页面、指标带与血缘树渲染
 options/      设置页
 ```
+
+## 已验证
+
+| 工具 | 作用 |
+|------|------|
+| `checkrefs` | 校验 manifest / HTML / JS 里所有相对引用真实存在 |
+| `e2e` | 无头 Edge + CDP 端到端：血缘树、父链、关闭结算、隐私过滤、Popup 渲染、Copy Smith 净化 |
 
 ## 界面
 

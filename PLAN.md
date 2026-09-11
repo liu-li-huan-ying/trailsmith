@@ -2,10 +2,10 @@
 
 > **项目名称**：TrailSmith（浏览匠）
 > **项目类型**：浏览器扩展（Chrome / Edge，Manifest V3）
-> **版本目标**：v0.1 MVF（Minimum Viable Feature）
-> **文档状态**：已通过可行性自审（v0.1 修订版）
-> **最后更新**：2026-09-10
-> **修订说明**：相较初版，已修正 3 处技术误区、落实必改清单、按评审结论重排里程碑。详见文末「修订摘要」与「自检清单」。
+> **版本目标**：v0.1.2（MVF + 端到端验证驱动的缺陷修复）
+> **文档状态**：已通过可行性自审（v0.1 修订版）＋ 端到端实测复核（v0.1.2）
+> **最后更新**：2026-09-11
+> **修订说明**：相较初版，已修正 3 处技术误区、落实必改清单、按评审结论重排里程碑；v0.1.1 做界面重做与配置收敛；v0.1.2 用无头浏览器端到端实测抓出并修掉 5 类真实缺陷。详见文末「修订摘要」「自检清单」与「十四、十五」。
 
 ---
 
@@ -110,6 +110,7 @@ Google（搜索"注意力训练"）
 | 规则 | 处理方式 |
 |------|----------|
 | URL 匹配私有 IP / localhost | 跳过 |
+| 非网页协议（`chrome-extension:` / `about:` / `file:` / `devtools:` 等） | 跳过（否则扩展自身的 Popup / 设置页会被记进血缘树） |
 | URL 包含 `password` / `login` / `auth` | 只记录域名，URL 参数清空 |
 | 银行 / 支付类域名（支付宝、微信支付等） | 跳过 |
 | `incognito` 隐身窗口 | 默认跳过（可配置开启） |
@@ -196,10 +197,12 @@ const NOISE = [
 ```
 trailsmith/                          # 与仓库实际文件一一对应，不含空壳
 ├── manifest.json                    # MV3 配置
+├── icons/                           # 16/32/48/128 图标（SVG 为源，PNG 由无头 Edge 栅格化）
 ├── background/
-│   ├── service-worker.js            # 后台入口（onInstalled 播种默认配置）
-│   ├── tab-tracker.js               # Tab Trail 采集（lastActive / currentActiveTabId 持久化）
-│   └── storage-manager.js           # chrome.storage 封装（trails / state / config / 保留期清理）
+│   ├── service-worker.js            # 后台入口（onInstalled 播种默认配置 + alarms 定时维护）
+│   ├── tab-tracker.js               # Tab Trail 采集（事件监听全部经 withLock 串行）
+│   ├── storage-manager.js           # chrome.storage 封装（trails / state / config / 保留期清理）
+│   └── lock.js                      # 全局 async 串行锁（消除读-改-写丢更新）
 ├── content/
 │   └── copy-cleaner.js              # Copy Smith 核心（注入页面，自持噪声正则）
 ├── popup/
@@ -215,13 +218,14 @@ trailsmith/                          # 与仓库实际文件一一对应，不�
 │   ├── constants.js                 # 存储键、规则表、保留期选项、支付域名、默认配置
 │   ├── tree-builder.js              # 血缘树构建算法
 │   ├── search-engine-parser.js      # 搜索引擎 URL 解析 + 展示名
-│   ├── privacy-filter.js            # 隐私过滤规则
+│   ├── privacy-filter.js            # 隐私过滤规则（含非网页协议拦截）
 │   └── time-utils.js                # 时间格式化
 ├── PLAN.md
 └── README.md
 ```
 
 > `side-panel/` 为 v0.2 规划项，v0.1 不建目录、不留占位文件。
+> 验证脚本放在 `.workbuddy/tools/`（已被 `.gitignore` 排除，属本地开发工具，不随扩展发布）。
 
 ### 3.2 Manifest V3 配置（关键字段，已修正权限）
 
@@ -229,11 +233,12 @@ trailsmith/                          # 与仓库实际文件一一对应，不�
 {
   "manifest_version": 3,
   "name": "TrailSmith",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Tab Trail + Copy Smith — 浏览血缘记录 + 复制净化",
   "permissions": [
     "tabs",
-    "storage"
+    "storage",
+    "alarms"
   ],
   "optional_permissions": [
     "sidePanel"
@@ -245,6 +250,12 @@ trailsmith/                          # 与仓库实际文件一一对应，不�
     "service_worker": "background/service-worker.js",
     "type": "module"
   },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
@@ -254,7 +265,12 @@ trailsmith/                          # 与仓库实际文件一一对应，不�
   ],
   "action": {
     "default_popup": "popup/popup.html",
-    "default_icon": "icons/icon-128.png"
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
   },
   "options_page": "options/options.html"
 }
@@ -262,6 +278,7 @@ trailsmith/                          # 与仓库实际文件一一对应，不�
 
 > **权限变更说明**：
 > - 移除 `webNavigation`：本版血缘完全基于 `openerTabId` + `tabs.onUpdated`，不再需要该权限，减小审核面。
+> - 新增 `alarms`：定时维护（保留期清理 + 容量守卫）需 `chrome.alarms` 才能跨 SW 休眠存活；缺这条权限时 `chrome.alarms` 直接不可用，定时维护会静默失效（v0.1.2 实测抓出的缺陷之一）。
 > - 未引入 `webRequest` / `scripting`：Referrer 与 PDF 注入均不依赖，保持最小权限。
 > - `host_permissions: <all_urls>` 保留：Copy Smith 需在任意网页注入 content script 做复制净化，这是功能必需；在商店审核中需说明"仅用于本地剪贴板清洗，不收集数据"。
 
@@ -404,6 +421,7 @@ copy 事件触发
 - **首屏活跃标签需播种**：SW 首次启动 / 安装后，主动 `tabs.query({active:true})` 播种 `currentActiveTabId` 与各标签 `lastActive`，否则首个被切走的标签时长会从 0 计或被吞。
 - **keepAlive 非必需**：每个事件原子化处理并立即写 storage，无需常驻保活；仅当单事件处理链过长（如超大数据写入）才考虑 `chrome.alarms` 心跳。
 - **初始活跃标签的 `copy` 监听时机**：content script `run_at: document_idle` 已足够；若发现极早期复制丢失，可改 `document_start` 并在 `DOMContentLoaded` 后挂监听。
+- **storage 写入必须串行（v0.1.2 补）**：`chrome.storage` 没有事务，本扩展每次写入都是「读整个 key → 内存改 → 整体写回」。tabs 的 4 个事件并发触发时，两次读-改-写交错会让后写者用旧快照覆盖前者。**所有 `getState → 改 → setState` 单元必须整体经 `withLock()` 串行**，否则会出现「父链丢失 / 关标签不结算 / 活跃时长归零」这类间歇性、极难复现的怪症。⚠️ 锁不可重入——被锁住的操作内部不要再调用另一个加锁操作。
 
 ---
 
@@ -559,6 +577,7 @@ v0.1 只需在 Manifest 中预留 `sidePanel` 可选权限，无需实现完整�
 |------|------|----------|
 | `tabs` | 记录 Tab 的创建/关闭/切换/更新 | 仅本地 |
 | `storage` | 保存记录和配置（local + sync） | 仅本地 |
+| `alarms` | 每小时一次的保留期清理与容量守卫（可跨 SW 休眠存活） | 仅本地 |
 | `<all_urls>` (host) | Copy Smith 需要在所有页面注入净化逻辑 | 不收集，仅本地剪贴板清洗 |
 
 > 相较初版，已移除 `webNavigation` 权限（血缘改由 `openerTabId` 实现）。
@@ -649,3 +668,41 @@ v0.1 只需在 Manifest 中预留 `sidePanel` 可选权限，无需实现完整�
 | 6 | `🔍` emoji 徽标 / `⚙️` emoji 图标 → 内联描边 SVG |
 | 7 | 徽标（活跃 / 切换次数 / 子节点数）→ 仅保留绿色活跃圆点，其余移入悬浮提示 |
 | 8 | Options 的 checkbox 列表 → 开关行 + 分段选择器，分区标签与面板分离 |
+
+---
+
+## 十五、v0.1.2 修订：端到端实测驱动的缺陷修复
+
+**A. 为什么要做这一轮**
+
+v0.1.1 之前的「功能已实现」都是读代码得出的结论。这一轮改用**无头 Edge + CDP**把扩展真装进浏览器跑一遍：真实开标签页、`window.open` 子标签、关标签、构造 `copy` 事件，再直接读 `chrome.storage` 核对落库结果。本以为只是走个过场，结果抓出 **5 类读代码时看不出来的真实缺陷**。
+
+**B. 抓出并修复的 5 类缺陷**
+
+| # | 缺陷 | 症状 | 修法 |
+|---|------|------|------|
+| 1 | **ESM 断链 ×4** | `background/` 下写成 `./constants.js`、`./search-engine-parser.js`、`./privacy-filter.js`，实际在 `../lib/` | 全部改为 `../lib/...`。`node --check` 只验语法不验模块解析，所以此前一直没暴露；补了 `checkrefs.mjs` 做引用完整性体检 |
+| 2 | **manifest 缺 `alarms` 权限** | `service-worker.js` 用了 `chrome.alarms.create`，但权限没声明 → `chrome.alarms` 为 `undefined`，每小时维护（保留期清理 + 容量守卫）**静默从不执行** | manifest 补 `"alarms"` |
+| 3 | **`trackerState` 读-改-写丢更新（最严重）** | tabs 的 4 个事件几乎同时触发，每个监听器都要「读全表 → 改 → 写回」。两次交错时后写者用旧快照覆盖前者成果。实测症状：新标签的 `chromeToTrail` 映射被 `onActivated` 的陈旧快照抹掉 → **关标签时 `onRemoved` 找不到记录，`closedAt` 永远不写、停留时长归零** | 新增 `background/lock.js` 全局串行锁，每个监听器体（以及定时维护）整体串到同一条队列上执行，交错从根上不可能 |
+| 4 | **`onRemoved` 误删历史** | 原实现关标签走 `dropRecord`（含 `deleteTrail`），等于**把血缘记录删了**，与「关掉 30 个标签页后仍可回溯」的核心价值直接冲突 | 拆成 `clearMappings`（关标签用，只摘映射不动记录）与 `dropRecord`（仅隐私命中时彻底撤销） |
+| 5 | **扩展自身页面污染血缘** | `chrome-extension://…/options/options.html` 被 `onCreated` 记进血缘树 | `privacy-filter.js` 新增 `NON_WEB_SCHEME` 正则，拦 `chrome-extension:` / `about:` / `file:` / `devtools:` 等非网页协议 |
+
+外加一处顺手补齐：**图标已生成但 manifest 没声明** → 浏览器显示默认灰色拼图图标。补 `icons` 与 `action.default_icon` 接线。
+
+**C. 验证工具（`.workbuddy/tools/`，不随扩展发布）**
+
+| 工具 | 作用 |
+|------|------|
+| `checkrefs.mjs` | 遍历 manifest 入口 / HTML `link`+`script` / JS ESM `import`，验证所有相对路径真实存在。退出码 1 = 有坏引用。**这是抓出缺陷 #1 的工具** |
+| `e2e.mjs` | 无头 Edge + CDP 端到端：加载扩展 → 断言身份/版本/权限/默认配置/设置页渲染 → 开起始页验搜索解析 → `window.open` 子标签验父链与 referrer → `chrome.tabs.remove` 验 `closedAt` 结算 → 支付域名与本地地址验隐私过滤 → Popup 真实节点验渲染 → 构造 `copy` 验 Copy Smith 净化。结尾打印通过/失败计数 |
+
+**D. 一次值得记下的测试方法论教训**
+
+第一版 `e2e.mjs` 测 Copy Smith 时自己造了个**空的** `DataTransfer` 再派发 `ClipboardEvent`，产品只能退回 `sel.toString()`；而 `<div>` 默认 `white-space: normal` 会把 `\n` 折成空格，于是换行正则必然失配——**看起来像产品的 bug，实际是测试没有模拟真实浏览器行为**。真实浏览器在 `copy` 事件触发时，`clipboardData` 里已经预填好选区文本（`text/plain` + `text/html`），content script 是在这个基础上覆盖。改成先 `dt.setData('text/plain', raw)` 再派发，测试立刻全绿。
+
+> **教训**：模拟浏览器事件时，要按浏览器**真实的**前置状态构造，而不是造一个「够用就行」的简化版——否则会把测试的失真误判成产品的缺陷。
+
+**E. 本轮验收结果**
+
+`checkrefs.mjs`：44 条引用全部命中。
+`e2e.mjs`：**28 项通过，0 项失败**。覆盖扩展加载与身份、版本、`alarms` 权限、默认配置播种、设置页 5 条规则渲染、起始页记录与搜索上下文解析、父链与 referrer 继承、`chromeTabId` 区分、关闭结算（`closedAt` + `activeDuration`）、隐私过滤、Popup 真实渲染节点与子级、Copy Smith 拦截与 R001/R005 净化且正文不误删。
