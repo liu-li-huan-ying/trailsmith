@@ -1,15 +1,22 @@
 import { STORAGE_KEYS } from '../lib/constants.js';
 import { loadTrails, applyFilter, renderMetrics, renderTree, inExtension } from '../lib/trail-view.js';
 import { buildTree } from '../lib/tree-builder.js';
+import { toMarkdown, toJSON, download, defaultName } from '../lib/exporter.js';
 
 const $ = (s) => document.querySelector(s);
+const version = inExtension ? chrome.runtime.getManifest().version : '';
+
+/** 导出的是「当前所见」：与视图共用同一份过滤后的集合，避免所见非所得 */
+let current = [];
 
 async function refresh() {
   const range = parseInt($('#range').value, 10);
   const q = $('#search').value.trim();
-  const trails = applyFilter(await loadTrails(), range, q);
-  renderMetrics($('#metrics'), trails, buildTree(trails));
-  renderTree($('#tree'), trails, q);
+  current = applyFilter(await loadTrails(), range, q);
+  renderMetrics($('#metrics'), current, buildTree(current));
+  renderTree($('#tree'), current, q);
+  $('#export').disabled = !current.length;
+  $('#exportMd').disabled = !current.length;
 }
 
 /* ------------------------------------------------------------------
@@ -39,16 +46,16 @@ $('#openPanel').addEventListener('click', async () => {
   }
 });
 
-$('#export').addEventListener('click', async () => {
-  const trails = await loadTrails();
-  const blob = new Blob([JSON.stringify(trails, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'trailsmith-export.json';
-  a.click();
-  URL.revokeObjectURL(url);
-});
+function exportAs(kind) {
+  if (!current.length) return;
+  if (kind === 'md') {
+    download(defaultName('md'), toMarkdown(current, version), 'text/markdown;charset=utf-8');
+  } else {
+    download(defaultName('json'), toJSON(current), 'application/json');
+  }
+}
+$('#export').addEventListener('click', () => exportAs('json'));
+$('#exportMd').addEventListener('click', () => exportAs('md'));
 
 $('#clear').addEventListener('click', async () => {
   if (!confirm('确定清空所有浏览记录？此操作不可撤销。')) return;

@@ -10,6 +10,7 @@
 - **Tab Trail**：自动记录每个标签页生命周期（创建/跳转/切换/关闭），基于 `openerTabId` 构建浏览血缘树，Popup 中可回溯。搜索起点（Google/Bing/百度/…）会自动标记，方便看出「这句话是我从哪儿搜出来的」。
 - **Side Panel 常驻面板**：把面板钉在浏览器侧边，一边浏览一边长出血缘，就地刷新。提供两个镜头 —— **血缘树**（这条线索从哪来）与 **时间轴**（我按什么顺序走过的）。侧栏宽度可拖，窄到 240px 会自适应。
 - **Copy Smith**：从任意网页 `Ctrl+C` 时自动清洗剪贴板。`Ctrl+Shift+C` 强制原始复制。
+- **导出**：血缘树一键导出 **Markdown**（带 YAML front-matter，可直接贴进 Obsidian）或 JSON（可回读）。导出的是当前筛选后所见的那部分。
 
 ### 净化规则
 
@@ -25,12 +26,12 @@
 
 ## 当前状态
 
-- 版本：`v0.2.0`
-- 已实现：MV3 工程骨架、Tab Trail 采集与血缘树、Copy Smith R001–R005、Popup 与 Options（浅色/深色双主题）、**Side Panel 常驻面板 + 血缘树/时间轴双视图**。
-- **已通过端到端实测**：用无头 Edge + CDP 把扩展真实装进浏览器跑通全链路（开标签 / 开子标签 / 关标签 / 构造复制），63 项断言全绿；引用完整性 64 条全命中。详见 `PLAN.md` 第十六节。
+- 版本：`v0.3.0`
+- 已实现：MV3 工程骨架、Tab Trail 采集与血缘树、Copy Smith R001–R005、Popup 与 Options（浅色/深色双主题）、Side Panel 常驻面板 + 血缘树/时间轴双视图、**导出 Markdown / JSON**。
+- **已通过实测**：单元测试 33 项全绿（纯函数）；端到端 68 项全绿（无头 Edge + CDP 把扩展真装进浏览器跑通全链路）；引用完整性 69 条全命中。详见 `PLAN.md` 第十七节。
 - 隐私过滤覆盖：私有 IP / localhost、非网页协议（`chrome-extension:` / `about:` / `file:`）、登录类参数、支付类域名、隐身窗口、自定义黑名单。
-- 待补：粘贴守卫（v0.3）、导出 Markdown/Obsidian（v0.3）、网页时间切片（v0.4）。
-- 计划书见 `PLAN.md`（含三轮对抗式可行性自审 + v0.1.1 界面重做 + v0.1.2 缺陷修复 + v0.2.0 侧边栏交付记录）。
+- 待补：粘贴守卫（v0.3）、网页时间切片（v0.4）、规则市场（v0.5）。
+- 计划书见 `PLAN.md`（含三轮对抗式可行性自审 + v0.1.1 界面重做 + v0.1.2 缺陷修复 + v0.2.0 侧边栏 + v0.3.0 导出）。
 
 ## 开发加载
 
@@ -46,8 +47,8 @@ manifest.json
 icons/        16/32/48/128 图标（SVG 为源，PNG 由无头 Edge 栅格化）
 background/   service-worker / tab-tracker / storage-manager / lock(串行锁)
 content/      copy-cleaner（注入页面）
-lib/          theme(设计令牌) / trail-view(共享渲染层 + 样式) / constants / time-utils
-              / search-engine-parser / privacy-filter / tree-builder
+lib/          theme(设计令牌) / trail-view(共享渲染层 + 样式) / exporter(导出)
+              / constants / time-utils / search-engine-parser / privacy-filter / tree-builder
 popup/        Popup 页面（顶栏含侧边栏入口）
 sidepanel/    侧边栏页面（血缘树 / 时间轴 双视图）
 options/      设置页
@@ -58,7 +59,8 @@ options/      设置页
 | 工具 | 作用 |
 |------|------|
 | `checkrefs` | 校验 manifest（含 `side_panel` / `options_ui` / 图标等清单类字段）、HTML、JS 里所有相对引用真实存在 |
-| `e2e` | 无头 Edge + CDP 端到端：血缘树、父链、关闭结算、隐私过滤、三个页面渲染与未捕获异常、共享样式、Side Panel 视图切换、Copy Smith 净化 |
+| `unit` | 纯函数单元测试（血缘树算法 / 过滤 / 时间格式化 / Markdown 序列化） |
+| `e2e` | 无头 Edge + CDP 端到端：血缘树、父链、关闭结算、隐私过滤、三个页面渲染与未捕获异常、共享样式、Side Panel 视图切换、Copy Smith 净化、导出按钮状态 |
 
 ## 界面
 

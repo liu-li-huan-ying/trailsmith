@@ -164,6 +164,26 @@ body {
   background: var(--danger-dim);
   border-color: transparent;
 }
+/* 只放图标的按钮：清空这类破坏性操作，不该和两个导出按钮平起平坐抢宽度 */
+.btn-icon {
+  flex: none;
+  width: 34px;
+  padding: 7px 0;
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn:disabled:hover {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--text);
+}
+.btn-danger:disabled:hover {
+  color: var(--text-2);
+  background: var(--surface);
+  border-color: var(--line);
+}
 
 /* ---------- 输入 ---------- */
 .input,
