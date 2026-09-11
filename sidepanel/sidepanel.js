@@ -1,15 +1,25 @@
 import { STORAGE_KEYS } from '../lib/constants.js';
-import { loadTrails, applyFilter, renderMetrics, renderTree, inExtension } from '../lib/trail-view.js';
+import {
+  loadTrails,
+  applyFilter,
+  renderMetrics,
+  renderTree,
+  renderTimeline,
+  inExtension,
+} from '../lib/trail-view.js';
 import { buildTree } from '../lib/tree-builder.js';
 
 const $ = (s) => document.querySelector(s);
+
+let view = 'tree';
 
 async function refresh() {
   const range = parseInt($('#range').value, 10);
   const q = $('#search').value.trim();
   const trails = applyFilter(await loadTrails(), range, q);
   renderMetrics($('#metrics'), trails, buildTree(trails));
-  renderTree($('#tree'), trails, q);
+  if (view === 'timeline') renderTimeline($('#list'), trails, q);
+  else renderTree($('#list'), trails, q);
 }
 
 /* ------------------------------------------------------------------
@@ -17,26 +27,13 @@ async function refresh() {
    ------------------------------------------------------------------ */
 $('#search').addEventListener('input', refresh);
 $('#range').addEventListener('change', refresh);
+$('#view').addEventListener('change', (e) => {
+  view = e.target.value;
+  refresh();
+});
 
 $('#openOptions').addEventListener('click', () => {
   if (inExtension) chrome.runtime.openOptionsPage();
-});
-
-/* 侧边栏入口：sidePanel.open() 要求「用户手势」上下文，
-   所以窗口 id 在页面加载时就取好，点击时不再 await 以免手势失效。 */
-let winId = null;
-if (inExtension && chrome.windows) {
-  chrome.windows.getCurrent().then((w) => { winId = w.id; }).catch(() => {});
-}
-
-$('#openPanel').addEventListener('click', async () => {
-  if (!inExtension || !chrome.sidePanel) return;
-  try {
-    await chrome.sidePanel.open({ windowId: winId ?? chrome.windows.WINDOW_ID_CURRENT });
-    window.close();
-  } catch (e) {
-    console.warn('[TrailSmith] 侧边栏打开失败', e);
-  }
 });
 
 $('#export').addEventListener('click', async () => {
@@ -55,5 +52,12 @@ $('#clear').addEventListener('click', async () => {
   if (inExtension) await chrome.storage.local.remove(STORAGE_KEYS.TRAILS);
   await refresh();
 });
+
+/* 侧边栏是常驻的：一边浏览一边长出血缘，数据变了就地刷新 */
+if (inExtension) {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes[STORAGE_KEYS.TRAILS]) refresh();
+  });
+}
 
 refresh();

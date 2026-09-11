@@ -22,20 +22,6 @@ body {
   justify-content: space-between;
   height: 48px;
 }
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.brand .mark {
-  color: var(--accent);
-  flex: none;
-}
-.brand .name {
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
 .ver {
   font-size: 11px;
   color: var(--text-3);

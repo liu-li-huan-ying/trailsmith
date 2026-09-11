@@ -116,4 +116,10 @@ $('#rules').addEventListener('change', updateRuleCount);
 $('#blacklist').addEventListener('input', updateBlCount);
 $('#save').addEventListener('click', save);
 
+/* 版本号以 manifest 为唯一事实源，别在 HTML 里硬编码（曾经就这么写错了一版） */
+if (inExtension) {
+  const v = document.querySelector('#ver');
+  if (v) v.textContent = chrome.runtime.getManifest().version;
+}
+
 load();

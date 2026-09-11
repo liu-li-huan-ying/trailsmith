@@ -1,0 +1,31 @@
+/* Side Panel 专属：画布随侧栏宽度伸缩，组件样式在 lib/trail-view.css */
+body {
+  min-width: 240px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 视图切换在顶栏，三件（品牌 / 切换 / 设置）等距铺开；
+   筛选行的搜索框与时间范围跟 Popup 完全一致，不会换行 */
+.bar > .seg {
+  flex: none;
+}
+
+/* 侧栏拖到极窄时，只留品牌标，把宽度让给视图切换 */
+@media (max-width: 300px) {
+  .brand .name {
+    display: none;
+  }
+}
+
+/* 四格指标在窄侧栏里放不下 → 降为两行，此时竖分隔线会显得错位，一并去掉 */
+@media (max-width: 340px) {
+  .metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .metric + .metric::before {
+    display: none;
+  }
+}

@@ -8,6 +8,7 @@
 ## 功能
 
 - **Tab Trail**：自动记录每个标签页生命周期（创建/跳转/切换/关闭），基于 `openerTabId` 构建浏览血缘树，Popup 中可回溯。搜索起点（Google/Bing/百度/…）会自动标记，方便看出「这句话是我从哪儿搜出来的」。
+- **Side Panel 常驻面板**：把面板钉在浏览器侧边，一边浏览一边长出血缘，就地刷新。提供两个镜头 —— **血缘树**（这条线索从哪来）与 **时间轴**（我按什么顺序走过的）。侧栏宽度可拖，窄到 240px 会自适应。
 - **Copy Smith**：从任意网页 `Ctrl+C` 时自动清洗剪贴板。`Ctrl+Shift+C` 强制原始复制。
 
 ### 净化规则
@@ -24,18 +25,19 @@
 
 ## 当前状态
 
-- 版本：`v0.1.2`
-- 已实现：MV3 工程骨架、Tab Trail 采集与血缘树、Copy Smith R001–R005、Popup 与 Options 界面（浅色/深色双主题）。
-- **已通过端到端实测**：用无头 Edge + CDP 把扩展真实装进浏览器跑通全链路（开标签 / 开子标签 / 关标签 / 构造复制），28 项断言全绿；引用完整性 44 条全命中。详见 `PLAN.md` 第十五节。
+- 版本：`v0.2.0`
+- 已实现：MV3 工程骨架、Tab Trail 采集与血缘树、Copy Smith R001–R005、Popup 与 Options（浅色/深色双主题）、**Side Panel 常驻面板 + 血缘树/时间轴双视图**。
+- **已通过端到端实测**：用无头 Edge + CDP 把扩展真实装进浏览器跑通全链路（开标签 / 开子标签 / 关标签 / 构造复制），63 项断言全绿；引用完整性 64 条全命中。详见 `PLAN.md` 第十六节。
 - 隐私过滤覆盖：私有 IP / localhost、非网页协议（`chrome-extension:` / `about:` / `file:`）、登录类参数、支付类域名、隐身窗口、自定义黑名单。
-- 待补：Side Panel（v0.2）、粘贴守卫（v0.3）、商店上架材料。
-- 计划书见 `PLAN.md`（含三轮对抗式可行性自审 + v0.1.1 界面重做 + v0.1.2 缺陷修复记录）。
+- 待补：粘贴守卫（v0.3）、导出 Markdown/Obsidian（v0.3）、网页时间切片（v0.4）。
+- 计划书见 `PLAN.md`（含三轮对抗式可行性自审 + v0.1.1 界面重做 + v0.1.2 缺陷修复 + v0.2.0 侧边栏交付记录）。
 
 ## 开发加载
 
 1. `chrome://extensions` → 开启「开发者模式」
 2. 「加载已解压的扩展程序」→ 选择本目录
 3. 固定扩展后点击图标打开 Popup；右键扩展 → 选项 进入设置页
+4. 侧边栏：Popup 顶栏的「在侧边栏打开」按钮，或浏览器自带侧栏入口选择 TrailSmith
 
 ## 结构
 
@@ -44,8 +46,10 @@ manifest.json
 icons/        16/32/48/128 图标（SVG 为源，PNG 由无头 Edge 栅格化）
 background/   service-worker / tab-tracker / storage-manager / lock(串行锁)
 content/      copy-cleaner（注入页面）
-lib/          theme(设计令牌) / constants / time-utils / search-engine-parser / privacy-filter / tree-builder
-popup/        Popup 页面、指标带与血缘树渲染
+lib/          theme(设计令牌) / trail-view(共享渲染层 + 样式) / constants / time-utils
+              / search-engine-parser / privacy-filter / tree-builder
+popup/        Popup 页面（顶栏含侧边栏入口）
+sidepanel/    侧边栏页面（血缘树 / 时间轴 双视图）
 options/      设置页
 ```
 
@@ -53,8 +57,8 @@ options/      设置页
 
 | 工具 | 作用 |
 |------|------|
-| `checkrefs` | 校验 manifest / HTML / JS 里所有相对引用真实存在 |
-| `e2e` | 无头 Edge + CDP 端到端：血缘树、父链、关闭结算、隐私过滤、Popup 渲染、Copy Smith 净化 |
+| `checkrefs` | 校验 manifest（含 `side_panel` / `options_ui` / 图标等清单类字段）、HTML、JS 里所有相对引用真实存在 |
+| `e2e` | 无头 Edge + CDP 端到端：血缘树、父链、关闭结算、隐私过滤、三个页面渲染与未捕获异常、共享样式、Side Panel 视图切换、Copy Smith 净化 |
 
 ## 界面
 
